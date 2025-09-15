@@ -5,19 +5,18 @@ defmodule Drawing.Actors.Canvas do
   end
   
   def init(state) do
+    Phoenix.PubSub.subscribe(Drawing.PubSub, "canvas_updates")
     {:ok, state}
-  end
-
-  def handle_cast({:publish_objects, json_strings}, current_list) do
-    new_state = current_list ++ json_strings
-
-    Phoenix.PubSub.broadcast(Drawing.PubSub, "canvas_updates", {:publish_objects, json_strings})
-
-    {:noreply, new_state}
   end
 
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
+  end
+
+  def handle_info({:publish_objects, json_strings}, state) do
+    IO.puts(json_strings)
+    new_state = [json_strings | state]
+    {:noreply, new_state}
   end
   
 end
