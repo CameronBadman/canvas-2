@@ -4,9 +4,9 @@ import { debounce } from 'lodash';
 import process from 'process';
 
 const CanvasComponent = () => {
-  const [elements, setElements] = useState([]);
+  const [elements, setElements] = useState(new Map());
   const [appState, setAppState] = useState({});
-  const previousElementsRef = useRef([]);
+  const previousElementsRef = useRef(new Map());
   
   const ws = useRef(null);
   
@@ -20,6 +20,7 @@ const CanvasComponent = () => {
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
+
         console.log(data)
       } catch {
         console.log("error failed to parse ws data")
@@ -71,7 +72,7 @@ const CanvasComponent = () => {
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <Excalidraw
-        initialData={{ elements, appState }}
+        initialData={{ ...elements.values(), appState}}
         onChange={handleChange}
       />
     </div>
