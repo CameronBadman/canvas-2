@@ -1,10 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Tldraw } from 'tldraw';
-import 'tldraw/tldraw.css';
+import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw';
 import { debounce } from 'lodash';
 
 const CanvasComponent = () => {
+  const [elements, setElements] = useState([]);
+  const [appState, setAppState] = useState({});
+  
   const ws = useRef(null);
+  const excalidrawAPI = useRef(null);
   
   useEffect(() => {
     ws.current = new WebSocket("ws://localhost:4000/123456789");
@@ -15,7 +18,45 @@ const CanvasComponent = () => {
     
     ws.current.onmessage = (event) => {
       try {
-        console.log('Received WebSocket message:', event.data);
+        const incomingElements = JSON.parse(event.data);
+        console.log('Received elements:', incomingElements);
+        
+        if (!Array.isArray(incomingElements)) {
+          console.warn('Incoming elements is not an array:', incomingElements);
+          return;
+        }
+        
+        // Update elements state - let Excalidraw handle the merging
+        setElements(prevElements => {
+          const currentElements = Array.isArray(prevElements) ? prevElements : [];
+          const elementMap = new Map(currentElements.map(el => [el.id, el]));
+          
+          // Add/update incoming elements
+          incomingElements.forEach(element => {
+            elementMap.set(element.id, element);
+          });
+          
+          const newElements = Array.from(elementMap.values());
+          
+          // Update Excalidraw scene
+          setTimeout(() => {
+            if (excalidrawAPI.current) {
+              try {
+                excalidrawAPI.current.updateScene({
+                  elements: newElements,
+                  captureUpdate: CaptureUpdateAction.NEVER
+                });
+              } catch (error) {
+                excalidrawAPI.current.updateScene({
+                  elements: newElements,
+                  commitToHistory: false
+                });
+              }
+            }
+          }, 0);
+          
+          return newElements;
+        });
       } catch (error) {
         console.error("Failed to parse WebSocket data:", error);
       }
@@ -38,49 +79,48 @@ const CanvasComponent = () => {
   
   const sendMessage = useCallback((message) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(message.changes);
+      ws.current.send(message);
     }
   }, []);
-
-  const extractRelevantChanges = (change) => {
-    console.log('ALL CHANGES:', change);
-    
-    // Log every single record that's being updated
-    Object.entries(change.changes.updated).forEach(([id, [from, to]]) => {
-      console.log(`ID: ${id}`);
-      console.log(`TypeName: ${to.typeName}`);
-      console.log(`Type: ${to.type}`);
-      console.log(`Record:`, to);
-      console.log('---');
-    });
-    
-    return 0;
-  }
   
-  const handleStoreChange = useCallback(
-    debounce((change) => {
-      const relevantChanges = extractRelevantChanges(change);
-      if (relevantChanges.length > 0) {
-        sendMessage(JSON.stringify(relevantChanges));
+  const previousElementsRef = useRef([]);
+  
+  // Only send changed elements to avoid loops and reduce bandwidth
+  const handleChange = useCallback(
+    debounce((elements, appState) => {
+      const changedElements = elements.filter(element => {
+        const prevElement = previousElementsRef.current.find(prev => prev.id === element.id);
+        return !prevElement || prevElement.version !== element.version;
+      });
+      
+      const newElements = elements.filter(element => 
+        !previousElementsRef.current.find(prev => prev.id === element.id)
+      );
+      
+      const elementsToSend = [...changedElements, ...newElements];
+      
+      if (elementsToSend.length > 0) {
+        sendMessage(JSON.stringify(elementsToSend));
       }
-    }, 200), 
+      
+      previousElementsRef.current = elements;
+      setElements(elements);
+      setAppState(appState);
+    }, 100),
     [sendMessage]
   );
   
-  const handleMount = useCallback((editor) => {
-    console.log('Tldraw editor mounted');
-    
-    const cleanup = editor.store.listen(handleStoreChange, { 
-      source: 'user' 
-    });
-    
-    return cleanup;
-  }, [handleStoreChange]);
+  const handleExcalidrawAPI = useCallback((api) => {
+    excalidrawAPI.current = api;
+    console.log('Excalidraw API ready');
+  }, []);
   
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      <Tldraw
-        onMount={handleMount}
+      <Excalidraw
+        initialData={{ elements, appState }}
+        onChange={handleChange}
+        excalidrawAPI={handleExcalidrawAPI}
       />
     </div>
   );
