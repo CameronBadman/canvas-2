@@ -1,8 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw';
 import { debounce } from 'lodash';
+import { useParams } from 'react-router-dom';
 
 const CanvasComponent = () => {
+  const { randomId } = useParams();
   const [elements, setElements] = useState([]);
   const [appState, setAppState] = useState({});
   
@@ -11,7 +13,8 @@ const CanvasComponent = () => {
   const isReceivingUpdate = useRef(false);
   
   useEffect(() => {
-    ws.current = new WebSocket("ws://localhost:4000/123456789");
+    console.log(randomId)
+    ws.current = new WebSocket("ws://localhost:4000/" + randomId);
     
     ws.current.onopen = () => {
       console.log('WebSocket connected');
