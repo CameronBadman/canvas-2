@@ -8,6 +8,7 @@ const CanvasComponent = () => {
   
   const ws = useRef(null);
   const excalidrawAPI = useRef(null);
+  const isReceivingUpdate = useRef(false);
   
   useEffect(() => {
     ws.current = new WebSocket("ws://localhost:4000/123456789");
@@ -21,24 +22,18 @@ const CanvasComponent = () => {
         const incomingElements = JSON.parse(event.data);
         console.log('Received elements:', incomingElements);
         
-        if (!Array.isArray(incomingElements)) {
-          console.warn('Incoming elements is not an array:', incomingElements);
-          return;
-        }
+        isReceivingUpdate.current = true;
         
-        // Update elements state - let Excalidraw handle the merging
         setElements(prevElements => {
           const currentElements = Array.isArray(prevElements) ? prevElements : [];
           const elementMap = new Map(currentElements.map(el => [el.id, el]));
           
-          // Add/update incoming elements
           incomingElements.forEach(element => {
             elementMap.set(element.id, element);
           });
           
           const newElements = Array.from(elementMap.values());
           
-          // Update Excalidraw scene
           setTimeout(() => {
             if (excalidrawAPI.current) {
               try {
@@ -53,12 +48,14 @@ const CanvasComponent = () => {
                 });
               }
             }
+            isReceivingUpdate.current = false;
           }, 0);
           
           return newElements;
         });
       } catch (error) {
         console.error("Failed to parse WebSocket data:", error);
+        isReceivingUpdate.current = false;
       }
     };
     
@@ -85,35 +82,58 @@ const CanvasComponent = () => {
   
   const previousElementsRef = useRef([]);
   
-  // Only send changed elements to avoid loops and reduce bandwidth
-  const handleChange = useCallback(
-    debounce((elements, appState) => {
-      const changedElements = elements.filter(element => {
-        const prevElement = previousElementsRef.current.find(prev => prev.id === element.id);
-        return !prevElement || prevElement.version !== element.version;
+  const hasElementChanged = (element, prevElement) => {
+    if (!prevElement) return true;
+    
+    const keyProps = ['x', 'y', 'width', 'height', 'angle', 'strokeColor', 'backgroundColor', 'fillStyle', 'strokeWidth', 'text', 'version'];
+    return keyProps.some(prop => element[prop] !== prevElement[prop]);
+  };
+  
+  const sendElementUpdates = useCallback(
+    debounce((currentElements) => {
+      if (isReceivingUpdate.current) return;
+      
+      const prevElementsMap = new Map(previousElementsRef.current.map(el => [el.id, el]));
+      
+      const changedElements = currentElements.filter(element => {
+        const prevElement = prevElementsMap.get(element.id);
+        return hasElementChanged(element, prevElement);
       });
       
-      const newElements = elements.filter(element => 
-        !previousElementsRef.current.find(prev => prev.id === element.id)
-      );
-      
-      const elementsToSend = [...changedElements, ...newElements];
-      
-      if (elementsToSend.length > 0) {
-        sendMessage(JSON.stringify(elementsToSend));
+      if (changedElements.length > 0) {
+        console.log('Sending changed elements:', changedElements.map(el => `${el.id} (${el.type}) x:${el.x} y:${el.y}`));
+        sendMessage(JSON.stringify(changedElements));
       }
       
-      previousElementsRef.current = elements;
-      setElements(elements);
-      setAppState(appState);
-    }, 100),
+      previousElementsRef.current = currentElements;
+    }, 200),
     [sendMessage]
   );
+  
+  const handleChange = useCallback((elements, appState) => {
+    setElements(elements);
+    setAppState(appState);
+    sendElementUpdates(elements);
+  }, [sendElementUpdates]);
+  
+  // Additional event listeners for more comprehensive change detection
+  const handlePointerUpdate = useCallback((payload) => {
+    if (payload.pointer.button === "up" && excalidrawAPI.current) {
+      // Pointer released - check for changes
+      const currentElements = excalidrawAPI.current.getSceneElements();
+      sendElementUpdates(currentElements);
+    }
+  }, [sendElementUpdates]);
   
   const handleExcalidrawAPI = useCallback((api) => {
     excalidrawAPI.current = api;
     console.log('Excalidraw API ready');
-  }, []);
+    
+    // Set up additional event listeners for better change detection
+    if (api.onPointerUpdate) {
+      api.onPointerUpdate(handlePointerUpdate);
+    }
+  }, [handlePointerUpdate]);
   
   return (
     <div style={{ width: '100%', height: '100%' }}>
@@ -121,6 +141,7 @@ const CanvasComponent = () => {
         initialData={{ elements, appState }}
         onChange={handleChange}
         excalidrawAPI={handleExcalidrawAPI}
+        onPointerUpdate={handlePointerUpdate}
       />
     </div>
   );
