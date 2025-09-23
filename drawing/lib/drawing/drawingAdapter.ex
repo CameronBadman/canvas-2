@@ -26,7 +26,7 @@ defmodule DrawingAdapter do
   end
   
   def handle_in({json_strings, [opcode: :text]}, state) do
-    Phoenix.PubSub.broadcast(Drawing.PubSub, "canvas_updates:#{state.canvas_id}", {:publish_objects, json_strings})
+    GenServer.cast(state.canvas_pid, {:user_action, json_strings})
     {:ok, state}
   end
   
