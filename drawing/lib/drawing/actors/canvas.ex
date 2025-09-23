@@ -2,6 +2,7 @@ defmodule Drawing.Actors.Canvas do
   use GenServer
   
   def start_link(canvas_id) do
+    IO.puts(canvas_id)
     state = %{
       canvas_id: canvas_id,
       elements: []
