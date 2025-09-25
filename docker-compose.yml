@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  drawing:
+    build:
+      context: ./drawing
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - REDIS_HOST=10.0.1.40
+      - REDIS_PORT=6379
+      - MIX_ENV=prod
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
