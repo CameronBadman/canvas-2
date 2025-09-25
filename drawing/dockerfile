@@ -1,7 +1,7 @@
-FROM elixir:1.15-alpine
+FROM elixir:1.18-alpine
 
-# Install build dependencies
-RUN apk add --no-cache build-base git
+# Install build dependencies and runtime dependencies
+RUN apk add --no-cache build-base git openssl-dev
 
 # Set work directory
 WORKDIR /app
@@ -31,10 +31,10 @@ RUN mix compile
 RUN mix release
 
 # Start fresh for runtime
-FROM elixir:1.15-alpine
+FROM elixir:1.18-alpine
 
-# Install runtime dependencies
-RUN apk add --no-cache ncurses-libs
+# Install runtime dependencies (important for crypto)
+RUN apk add --no-cache ncurses-libs openssl
 
 WORKDIR /app
 
