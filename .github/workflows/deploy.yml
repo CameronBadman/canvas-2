@@ -1,0 +1,56 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy Frontend
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FRONTEND_IP }}
+        username: root
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /app
+          git pull origin main
+          cd frontend
+          docker build -t frontend-app .
+          docker stop frontend-container || true
+          docker rm frontend-container || true
+          docker run -d --name frontend-container -p 80:80 frontend-app
+
+  deploy-drawing:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy Drawing Service
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.ELIXIR_SERVER_IP }}
+        username: root
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /app
+          git pull origin main
+          cd drawing
+          docker build -t drawing-app .
+          docker stop drawing-container || true
+          docker rm drawing-container || true
+          docker run -d --name drawing-container -p 4000:4000 \
+            -e REDIS_HOST=10.0.1.40 \
+            -e REDIS_PORT=6379 \
+            -e MIX_ENV=prod \
+            drawing-app
