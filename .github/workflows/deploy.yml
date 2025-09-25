@@ -21,9 +21,16 @@ jobs:
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+          # Setup if /app doesn't exist
+          if [ ! -d "/app" ]; then
+            git clone ${{ secrets.GIT_REPO_URL }} /app
+          fi
+          
           cd /app
           git pull origin main
           cd frontend
+          
+          # Build and deploy
           docker build -t frontend-app .
           docker stop frontend-container || true
           docker rm frontend-container || true
@@ -43,9 +50,16 @@ jobs:
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+          # Setup if /app doesn't exist
+          if [ ! -d "/app" ]; then
+            git clone ${{ secrets.GIT_REPO_URL }} /app
+          fi
+          
           cd /app
           git pull origin main
           cd drawing
+          
+          # Build and deploy
           docker build -t drawing-app .
           docker stop drawing-container || true
           docker rm drawing-container || true
