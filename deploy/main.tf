@@ -224,9 +224,14 @@ resource "hcloud_firewall" "web_firewall" {
   }
 }
 
-resource "hcloud_firewall_attachment" "frontend_firewall" {
+resource "hcloud_firewall_attachment" "all_servers_firewall" {
   firewall_id = hcloud_firewall.web_firewall.id
-  server_ids  = [hcloud_server.frontend.id]
+  server_ids  = [
+    hcloud_server.frontend.id,
+    hcloud_server.backend_go.id, 
+    hcloud_server.backend_elixir.id,
+    hcloud_server.database.id
+  ]
 }
 
 output "frontend_ip" {
