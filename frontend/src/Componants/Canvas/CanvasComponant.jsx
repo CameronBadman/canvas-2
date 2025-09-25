@@ -7,6 +7,7 @@ const CanvasComponent = () => {
   const { randomId } = useParams();
   const [elements, setElements] = useState([]);
   const [appState, setAppState] = useState({});
+  const [ready, setReady] = useState(false)
   
   const ws = useRef(null);
   const excalidrawAPI = useRef(null);
@@ -17,6 +18,7 @@ const CanvasComponent = () => {
     ws.current = new WebSocket("ws://localhost:4000/" + randomId);
     
     ws.current.onopen = () => {
+      setReady(true)
       console.log('WebSocket connected');
     };
     
@@ -63,7 +65,7 @@ const CanvasComponent = () => {
     };
     
     ws.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      setReady(false)
     };
     
     ws.current.onclose = () => {
@@ -130,8 +132,6 @@ const CanvasComponent = () => {
   
   const handleExcalidrawAPI = useCallback((api) => {
     excalidrawAPI.current = api;
-    console.log('Excalidraw API ready');
-    
     // Set up additional event listeners for better change detection
     if (api.onPointerUpdate) {
       api.onPointerUpdate(handlePointerUpdate);
@@ -140,12 +140,13 @@ const CanvasComponent = () => {
   
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      <Excalidraw
+      {ready ? <Excalidraw
         initialData={{ elements, appState }}
         onChange={handleChange}
         excalidrawAPI={handleExcalidrawAPI}
         onPointerUpdate={handlePointerUpdate}
-      />
+      /> : <div></div>}
+      
     </div>
   );
 };
