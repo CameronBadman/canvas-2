@@ -24,7 +24,6 @@ defmodule Drawing.Actors.Canvas do
   end
   
   def handle_cast({:user_action, json_strings}, state) do
-    IO.puts(json_strings)
     new_state = %{state | batch: [json_strings | state.batch]}
     {:noreply, new_state}
   end
@@ -51,6 +50,5 @@ defmodule Drawing.Actors.Canvas do
   defp schedule_flush do
     Process.send_after(self(), :flush_batch, 2000)
   end
-
 
 end

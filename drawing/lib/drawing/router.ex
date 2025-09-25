@@ -22,19 +22,19 @@ defmodule Drawing.Router do
     """)
   end
 
-  get "/stats/:id" do
+  get "ws/stats/:id" do
     id = conn.path_params["id"]
     send_resp(conn, 200, "stats on #{id}")
   end
 
-  get "/create/:id" do
+  get "ws/create/:id" do
     id = conn.path_params["id"]
     send_resp(conn, 200, "create canvas #{id}")
   end
 
 
   # NOTE TO Self put at bottom always
-  get "/:id" do
+  get "ws/:id" do
     id = conn.path_params["id"]
     conn
     |> WebSockAdapter.upgrade(DrawingAdapter, %{canvas_id: id}, timeout: 60_000)
