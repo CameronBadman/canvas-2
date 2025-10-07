@@ -1,6 +1,6 @@
 defmodule Drawing.MixProject do
   use Mix.Project
-  
+
   def project do
     [
       app: :drawing,
@@ -16,19 +16,20 @@ defmodule Drawing.MixProject do
       ]
     ]
   end
+
   def application do
     [
       extra_applications: [:logger],
       mod: {Drawing.Application, []}
     ]
   end
-  
+
   defp deps do
     [
       {:bandit, "~> 1.0"},
       {:websock_adapter, "~> 0.5"},
       {:phoenix_pubsub, "~> 2.1"},
-      {:jason, "~> 1.4"}  # ADD THIS LINE IF YOU DON'T HAVE IT
+      {:jason, "~> 1.4"}
     ]
   end
 end
