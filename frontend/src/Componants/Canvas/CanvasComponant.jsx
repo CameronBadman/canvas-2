@@ -14,7 +14,9 @@ const CanvasComponent = () => {
   const isReceivingUpdate = useRef(false);
   
   useEffect(() => {
-    ws.current = new WebSocket("wss://" + window.location.host + "/ws/" + randomId);
+    const wsUrl = `/ws/${randomId}`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws.current = new WebSocket(`${protocol}//${window.location.host}${wsUrl}`);
     ws.current.onopen = () => {
       setReady(true)
       console.log('WebSocket connected');

@@ -4,17 +4,23 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     ports:
       - "80:80"
+    environment:
+      - DOMAIN=localhost
+      - DRAWING_IP=drawing
+      - DRAWING_PORT=4000
     restart: unless-stopped
     networks:
       - app-network
+    depends_on:
+      - drawing
 
   drawing:
     build:
       context: ./drawing
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     ports:
       - "4000:4000"
     environment:
